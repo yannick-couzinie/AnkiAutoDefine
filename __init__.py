@@ -22,10 +22,11 @@ def getBoldWords(html):
 
 def getNoteType(name):
     global config
+    notetypes = []
     for notetype in config['notetypes']:
         if(name == notetype['name']): 
-            return notetype
-    return None
+            notetypes.append(notetype)
+    return notetypes
 
 def getActiveWindow(note):
     for widget in mw.app.allWidgets():
@@ -53,51 +54,55 @@ def getDefinitionChoiceDialog(aw, entries):
 def theMagic(changed: bool, note: anki.notes.Note, current_field_idx: int):
     global finalEntries, config
     fields = mw.col.models.field_names(note.note_type())
-    notetype = getNoteType(note.note_type()['name'])
-    if not notetype:
+    notetypes = getNoteType(note.note_type()['name'])
+    if not notetypes:
         # not a notetype that has the add-on enabled, don't do anything
         return changed
 
-    if fields[current_field_idx] != notetype["src"]:
-        # not the src field that has been edited, don't do anything
-        return changed
-    src = fields[current_field_idx]
-    dst = notetype["dst"]
+    for notetype in notetypes:
+        if fields[current_field_idx] != notetype["src"]:
+            # not the src field that has been edited, don't do anything
+            continue
+        src = fields[current_field_idx]
+        dst = notetype["dst"]
 
-    if not dst:
-        raise ValueError("The dst and src fields in config don't match those on the card")
-    
-    if note[dst]:
-        # dst isn't empty, to avoid overwriting data, don't do anything
-        return changed
+        if not dst:
+            raise ValueError("The dst and src fields in config don't match those on the card")
+        
+        if note[dst]:
+            # dst isn't empty, to avoid overwriting data, don't do anything
+            continue
 
-    aw = getActiveWindow(note)
-    if not aw:
-        return changed
-    
-    boldWords = getBoldWords(note[src])
-    # runs the dialogs
-    for word in boldWords:
-        entries = definitionGetter.parseSearch(word)
+        aw = getActiveWindow(note)
+        if not aw:
+            continue
+
+        if not note[src]:
+            # the relevant field is empty
+            continue
+        
+        # runs the dialogs
+        entries = definitionGetter.parseSearch(note[src])
         if(len(entries) == 1):
             finalEntries.append(entries[0])
         else:
             getDefinitionChoiceDialog(aw, entries).exec_()
 
-    # puts the output into the note and saves
-    output = ""
-    for entry in finalEntries:
-        output += "<div><b>"+entry.word+":</b> " + entry.getFullDef() + "</div>"
-    note[dst] = output
-    try:
-        note._to_backend_note()
-    except AttributeError:
-        note.flush()
-    aw.editor.loadNote(focusTo=current_field_idx+1)
-    finalEntries = []
+        # puts the output into the note and saves
+        output = ""
+        for entry in finalEntries:
+            output += "<div><b>"+entry.word+":</b> " + entry.getFullDef() + "</div>"
+        note[dst] = output
+        try:
+            note._to_backend_note()
+        except AttributeError:
+            note.flush()
+        aw.editor.loadNote(focusTo=current_field_idx+1)
+        finalEntries = []
 
-    # prevents focus from advancing and messing the edits up
-    return False
+        # prevents focus from advancing and messing the edits up
+        return False
+    return changed
 
 # tells anki to call theMagic when focus is lost (you move out of a text field or something)
 gui_hooks.editor_did_unfocus_field.append(theMagic)
