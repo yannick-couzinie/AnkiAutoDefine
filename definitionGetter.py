@@ -49,10 +49,52 @@ class dictionaryEntry:
         return self.word+ ": " + self.shortDef
 
 def cleanDefinition(dirty):
-    dirtyLines = re.findall(r'<p class="text">.+?</p>|<div class="text">.+?</div>',dirty,re.DOTALL)
+    # clean the returned HTML and return a nicely formatted string
+    no_list = '<div class="text">.+?</div>'
+    
+    # goo opens an unordered list for every list item
+    list_item_open = '<ol class="meaning cx"><li><!-- l-ol-->'
+    list_item_close = '</li></ol><!-- /l-ol -->'
+
+    # quotes are contained as nested list and marked with the m-ol instead of
+    # l-ol.
+    nested_list_open = '<ol class="meaning cx"><li><!-- m-ol-->'
+    nested_list_close = '</ol><!-- /m-ol -->'
+
+    # the actual content of the list items actually beings at the <p
+    # class="text">
+    list_item = '<p class="text">.+?</p>'
+
+    dirty_lines = re.findall(r'|'.join([no_list, list_item_open, list_item_close,
+                                        nested_list_open, nested_list_close,
+                                        list_item]), dirty, re.DOTALL)
+
     answer = ""
-    for line in dirtyLines:
-        answer += re.sub(r'<.*?>|&thinsp;|&#x32..;',"",line) + "\n"
+    in_list = False
+    for line in dirty_lines:
+        if line == list_item_open:
+            if not in_list:
+                answer += "<ol><li>"
+                in_list = True
+            else:
+                answer += "<li>"
+
+        if line == list_item_close:
+            answer += "</li>\n"
+
+        if line in [nested_list_open, nested_list_close]:
+            continue
+
+        # instead of using HTML lists to number, goo used hardcoded numbers
+        # with fullwidth numbers
+        answer += re.sub(r'<strong>[１，２，３，４，５，６，７，８，９]*'
+                          '</strong>|<.*?>|&thinsp;|&#x32..;',"",line)
+
+        if not in_list:
+            answer += "\n"
+
+    if in_list:
+        answer += "</ol>\n"
     return answer
 
 # Returns the encoding of the word as used in goo辞書's url
@@ -71,7 +113,7 @@ def getSearchPage(word):
     return searchPage
 
 # Returns an array containing dictionaryEntry objects corresponding to the word passed as a parameter
-def parseSearch(word): 
+def parseSearch(word):
     try:
         searchPage = getSearchPage(word)
     except ValueError:
