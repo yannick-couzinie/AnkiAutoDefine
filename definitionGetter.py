@@ -8,7 +8,12 @@ class dictionaryEntry:
     def fromSearchPage(cls, name, dataHTML):
         shortDef = re.search(r'<p class="text">(.+?)</p>',dataHTML).group(1)
         url = "https://dictionary.goo.ne.jp"+re.search(r'(/word/.+?)"',dataHTML).group(1)
-        word = re.search(r'<p class="title">(.+?) ',dataHTML).group(1)
+        word = re.search(r'<p class="title">(.+?) ', dataHTML).group(1)
+        if "【" in word:
+            word_kanji = re.search(r'【(.+?)】', word).group(1)
+            word_reading = re.sub(r'【.+?】', "", word)
+            word_reading = word_reading.replace("‐","")
+            word = f"{word_kanji}（{word_reading}）"
         return cls(name, word, shortDef, url)
 
     @classmethod
@@ -134,3 +139,8 @@ def parseSearch(word):
 def test(word):
     for entry in parseSearch(word):
         print(entry.word + entry.getFullDef())
+
+# test("希薄")
+# test("硬直")
+# test("最中")
+test("逆襲")
