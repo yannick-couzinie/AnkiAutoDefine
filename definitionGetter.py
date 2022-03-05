@@ -99,8 +99,9 @@ def _clean_interior_definition(input_str: str) -> str:
             continue
 
         # instead of using HTML lists to number, goo used hardcoded numbers
-        # with fullwidth numbers
-        answer += re.sub(r'<strong>[１，２，３，４，５，６，７，８，９]*'
+        # with fullwidth numbers for single digit entries and half-width for
+        # higher numbers
+        answer += re.sub(r'<strong>(?:１|２|３|４|５|６|７|８|９|[0-9][0-9]+)'
                           '</strong>|<.*?>|&thinsp;|&#x32..;', "", line)
 
         if not in_list:
