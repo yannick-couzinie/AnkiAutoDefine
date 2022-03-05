@@ -1,6 +1,9 @@
 import requests
 import re
 
+# for hinshi, kanou and hosetsu see page of 行く（ゆく）
+# for hinshi, hasei see 剛直
+GRAMMATICAL_CLASSES = "hinshi|hasei|kanou|hosetsu"
 # dictionary entry object to organize the word and definitions.
 class dictionaryEntry:
 
@@ -53,11 +56,16 @@ class dictionaryEntry:
     def __str__(self):
         return self.word+ ": " + self.shortDef
 
-def cleanDefinition(dirty):
-    # clean the returned HTML and return a nicely formatted string
+def _clean_interior_definition(input_str: str) -> str:
+    """
+    Clean the html strings for each grammatical role.
+    """
+
+    grammatical_role = f'<span class="(?:{GRAMMATICAL_CLASSES})">.+?(?:</p>|</div>)'
+    # if there is not a list of definitions the div class is text
     no_list = '<div class="text">.+?</div>'
     
-    # goo opens an unordered list for every list item
+    # if there are multiple definitions, goo opens an unordered list for every list item
     list_item_open = '<ol class="meaning cx"><li><!-- l-ol-->'
     list_item_close = '</li></ol><!-- /l-ol -->'
 
@@ -70,9 +78,9 @@ def cleanDefinition(dirty):
     # class="text">
     list_item = '<p class="text">.+?</p>'
 
-    dirty_lines = re.findall(r'|'.join([no_list, list_item_open, list_item_close,
+    dirty_lines = re.findall(r'|'.join([grammatical_role, no_list, list_item_open, list_item_close,
                                         nested_list_open, nested_list_close,
-                                        list_item]), dirty, re.DOTALL)
+                                        list_item]), input_str, re.DOTALL)
 
     answer = ""
     in_list = False
@@ -93,7 +101,7 @@ def cleanDefinition(dirty):
         # instead of using HTML lists to number, goo used hardcoded numbers
         # with fullwidth numbers
         answer += re.sub(r'<strong>[１，２，３，４，５，６，７，８，９]*'
-                          '</strong>|<.*?>|&thinsp;|&#x32..;',"",line)
+                          '</strong>|<.*?>|&thinsp;|&#x32..;', "", line)
 
         if not in_list:
             answer += "\n"
@@ -101,6 +109,26 @@ def cleanDefinition(dirty):
     if in_list:
         answer += "</ol>\n"
     return answer
+
+def cleanDefinition(dirty):
+    # the overarching 'sections' of a dictionary entry are introduced by <span
+    # class="{GRAMMATICAL_CLASSES}">[...]</span> blocks, if there is more than
+    # one role we want this to be an unordered list.
+    dirty = re.split(fr'(?=<span class="(?:{GRAMMATICAL_CLASSES})">)', dirty)
+    answer = ""
+    if len(dirty) > 2:
+        answer += "<ol>"
+        for dirty_part in dirty[1:]:
+            answer += "<li>"
+            answer += _clean_interior_definition(dirty_part)
+            answer += "</li>\n"
+        answer += "</ol>"
+
+    else:
+        answer = _clean_interior_definition(dirty[0])
+
+    return answer
+
 
 # Returns the encoding of the word as used in goo辞書's url
 def urlEncode(word):
@@ -143,4 +171,5 @@ def test(word):
 # test("希薄")
 # test("硬直")
 # test("最中")
-test("逆襲")
+test("行く")
+# test("逆襲")
