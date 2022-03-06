@@ -1,9 +1,11 @@
 {"notetypes" : [
     {"name" : "Japanese (recognition)", 
     "src" : "Expression",
-    "dst" : "Meaning"},
+    "dst" : "Meaning",
+    "type" : "Bold font"},
     
     {"name" : "MIA Japanese", 
     "src" : "Expression",
-    "dst" : "Meaning"}
+    "dst" : "Meaning",
+    "type": "Bold font"}
     ]}

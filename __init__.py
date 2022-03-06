@@ -17,8 +17,23 @@ def buttonPressed(entry,window):
     finalEntries.append(entry)
     window.close()
 
-def getBoldWords(html):
-    return re.findall(r'<b>(.+?)</b>',html)
+def get_bold_words(html):
+    return re.findall(r'<b>(.+?)</b>', html)
+
+def get_cloze_words(html):
+    return re.findall(r'{{c[1-9]+\:\:(.+?)(?:\:\:|}})', html)
+
+def get_cloze_hints(html):
+    return re.findall(r'{{c[1-9]+\:\:[^}}]+?\:\:(.+?)}}', html)
+
+def remove_cloze(html):
+    """
+    Remove any cloze and leave the content of the
+    non-hint part.
+    """
+    return [re.sub(r'{{c[1-9]+\:\:(.+?)(?:}}|\:\:.+?}})',
+                   lambda x: x.group(1), html)]
+
 
 def getNoteType(name):
     global config
@@ -51,6 +66,28 @@ def getDefinitionChoiceDialog(aw, entries):
     d.setLayout(grid)
     return d
 
+def _get_words(config_entry: dict, input_str: str) -> list[str]:
+    """
+    Parse the 'type' entry in the config and extract the corresponding words
+    from the note.
+    """
+    if config_entry["type"] == "Bold font":
+        return get_bold_words(input_str)
+
+    if config_entry["type"] == "Cloze":
+        return get_cloze_words(input_str)
+
+    if config_entry["type"] == "Cloze hint":
+        return get_cloze_hints(input_str)
+
+    if config_entry["type"] == "Ignore cloze":
+        return remove_cloze(input_str)
+
+    if config_entry["type"] == "Single":
+        return [input_str]
+
+    raise ValueError(f"Unkown config type entry in {config_entry}")
+
 def theMagic(changed: bool, note: anki.notes.Note, current_field_idx: int):
     global finalEntries, config
     fields = mw.col.models.field_names(note.note_type())
@@ -81,12 +118,16 @@ def theMagic(changed: bool, note: anki.notes.Note, current_field_idx: int):
             # the relevant field is empty
             continue
         
+
         # runs the dialogs
-        entries = definitionGetter.parseSearch(note[src])
-        if(len(entries) == 1):
-            finalEntries.append(entries[0])
-        else:
-            getDefinitionChoiceDialog(aw, entries).exec_()
+        entries = _get_words(notetype, note[src])
+
+        for entry in entries:
+            definitions = definitionGetter.parseSearch(entry)
+            if(len(definitions) == 1):
+                finalEntries.append(definitions[0])
+            else:
+                getDefinitionChoiceDialog(aw, definitions).exec_()
 
         # puts the output into the note and saves
         output = ""
