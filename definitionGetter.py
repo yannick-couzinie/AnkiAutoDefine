@@ -108,7 +108,7 @@ def _clean_interior_definition(input_html: str) -> str:
         # with fullwidth numbers for single digit entries and half-width for
         # higher numbers
         answer += re.sub(r'<strong>(?:１|２|３|４|５|６|７|８|９|[0-9][0-9]+)'
-                          '</strong>|<(?!.*?(ol|li|/ol|/li)).*?>|&thinsp;|&#x32..;', "", line)
+                          '</strong>|<.*?>|&thinsp;|&#x32..;', "", line)
 
         if not in_list:
             answer += "\n"
