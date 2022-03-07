@@ -56,15 +56,18 @@ class dictionaryEntry:
     def __str__(self):
         return self.word+ ": " + self.shortDef
 
-def _clean_interior_definition(input_str: str) -> str:
+def _clean_interior_definition(input_html: str) -> str:
     """
     Clean the html strings for each grammatical role.
     """
 
-    grammatical_role = f'<span class="(?:{GRAMMATICAL_CLASSES})">.+?(?:</p>|</div>)'
+    # on some pages html tags are separated by newlines for some reason (see
+    # 公平無私 page)
+    input_html = input_html.replace("\n","")
+
     # if there is not a list of definitions the div class is text
     no_list = '<div class="text">.+?</div>'
-    
+
     # if there are multiple definitions, goo opens an unordered list for every list item
     list_item_open = '<ol class="meaning cx"><li><!-- l-ol-->'
     list_item_close = '</li></ol><!-- /l-ol -->'
@@ -78,9 +81,9 @@ def _clean_interior_definition(input_str: str) -> str:
     # class="text">
     list_item = '<p class="text">.+?</p>'
 
-    dirty_lines = re.findall(r'|'.join([grammatical_role, no_list, list_item_open, list_item_close,
+    dirty_lines = re.findall(r'|'.join([no_list, list_item_open, list_item_close,
                                         nested_list_open, nested_list_close,
-                                        list_item]), input_str, re.DOTALL)
+                                        list_item]), input_html, re.DOTALL)
 
     answer = ""
     in_list = False
@@ -89,11 +92,14 @@ def _clean_interior_definition(input_str: str) -> str:
             if not in_list:
                 answer += "<ol><li>"
                 in_list = True
+                continue
             else:
                 answer += "<li>"
+                continue
 
         if line == list_item_close:
             answer += "</li>\n"
+            continue
 
         if line in [nested_list_open, nested_list_close]:
             continue
@@ -102,7 +108,7 @@ def _clean_interior_definition(input_str: str) -> str:
         # with fullwidth numbers for single digit entries and half-width for
         # higher numbers
         answer += re.sub(r'<strong>(?:１|２|３|４|５|６|７|８|９|[0-9][0-9]+)'
-                          '</strong>|<.*?>|&thinsp;|&#x32..;', "", line)
+                          '</strong>|<(?!.*?(ol|li|/ol|/li)).*?>|&thinsp;|&#x32..;', "", line)
 
         if not in_list:
             answer += "\n"
@@ -115,18 +121,22 @@ def cleanDefinition(dirty):
     # the overarching 'sections' of a dictionary entry are introduced by <span
     # class="{GRAMMATICAL_CLASSES}">[...]</span> blocks, if there is more than
     # one role we want this to be an unordered list.
-    dirty = re.split(fr'(?=<span class="(?:{GRAMMATICAL_CLASSES})">)', dirty)
+    import pdb; pdb.set_trace()
+    grammar_search = fr'\n(?=[^\n]+<span class="(?:{GRAMMATICAL_CLASSES})">(?:［|\[).+?(?:］|\])</span>[^\n]+)'
+    span_splits = re.split(grammar_search, dirty)
+
     answer = ""
-    if len(dirty) > 2:
-        answer += "<ol>"
-        for dirty_part in dirty[1:]:
+    
+    # first split is the one before the first with a span so skip
+    if len(span_splits) > 2:
+        answer += "<ol>\n"
+        for split in span_splits[1:]:
             answer += "<li>"
-            answer += _clean_interior_definition(dirty_part)
+            answer += _clean_interior_definition(split)
             answer += "</li>\n"
         answer += "</ol>"
-
     else:
-        answer = _clean_interior_definition(dirty[0])
+        answer = _clean_interior_definition(span_splits[-1])
 
     return answer
 
@@ -141,6 +151,7 @@ def urlEncode(word):
 
 # searches for the passed word, returning the html of the page
 def getSearchPage(word):
+    print(urlEncode(word))
     searchPage = requests.get(urlEncode(word)).text
     if "一致する情報は見つかりませんでした" in searchPage:
         raise ValueError("goo辞書で一致する情報は見つかりませんでした")
@@ -169,8 +180,7 @@ def test(word):
     for entry in parseSearch(word):
         print(entry.word + entry.getFullDef())
 
-# test("希薄")
-# test("硬直")
-# test("最中")
-test("行く")
-# test("逆襲")
+# test("行く")
+# test("現状")
+# test("公平無私")
+test("剛直")
