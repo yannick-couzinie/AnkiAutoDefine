@@ -109,12 +109,10 @@ def _clean_interior_definition(input_html: str) -> str:
         # higher numbers
         answer += re.sub(r'<strong>(?:１|２|３|４|５|６|７|８|９|[0-9][0-9]+)'
                           '</strong>|<.*?>|&thinsp;|&#x32..;', "", line)
-
-        if not in_list:
-            answer += "\n"
+        answer = answer.strip()
 
     if in_list:
-        answer += "</ol>\n"
+        answer += "</ol>"
     return answer
 
 def cleanDefinition(dirty):
@@ -179,7 +177,8 @@ def test(word):
     for entry in parseSearch(word):
         print(entry.word + entry.getFullDef())
 
-# test("行く")
+# test("見る")
 # test("現状")
 # test("公平無私")
 # test("剛直")
+# test("呼ぶ")
