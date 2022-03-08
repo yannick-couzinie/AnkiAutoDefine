@@ -121,7 +121,6 @@ def cleanDefinition(dirty):
     # the overarching 'sections' of a dictionary entry are introduced by <span
     # class="{GRAMMATICAL_CLASSES}">[...]</span> blocks, if there is more than
     # one role we want this to be an unordered list.
-    import pdb; pdb.set_trace()
     grammar_search = fr'\n(?=[^\n]+<span class="(?:{GRAMMATICAL_CLASSES})">(?:［|\[).+?(?:］|\])</span>[^\n]+)'
     span_splits = re.split(grammar_search, dirty)
 
@@ -183,4 +182,4 @@ def test(word):
 # test("行く")
 # test("現状")
 # test("公平無私")
-test("剛直")
+# test("剛直")
